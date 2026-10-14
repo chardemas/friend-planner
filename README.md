@@ -2,7 +2,6 @@
 
 Low-effort plans with your people. Throw out a hang, a weekly game, or dinner. See who's actually free, get quick RSVPs, and split the bill afterwards.
 
-It's built on the same stack as Pickle's job posting: **Next.js + TypeScript + oRPC + Postgres (Supabase) in a Turborepo monorepo**.
 
 ## What it does
 
