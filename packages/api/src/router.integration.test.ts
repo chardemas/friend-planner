@@ -13,10 +13,10 @@ const TZ = "America/New_York";
 describe.skipIf(!hasDb)("router (integration)", async () => {
   const { db } = await import("@lowkey/db");
   const { router } = await import("./router");
-  const { signIn } = await import("./services/users");
+  const { createUser } = await import("./services/users");
 
   const tag = randomUUID().slice(0, 8);
-  const mk = async (name: string) => (await signIn(db, { email: `${name}-${tag}@test.dev`, name, timezone: TZ })).user!;
+  const mk = async (name: string) => (await createUser(db, { email: `${name}-${tag}@test.dev`, name, timezone: TZ })).user!;
   const as = (userId: string) => createRouterClient(router, { context: { db, userId } });
   const day = (offset: number, hour: number) => {
     const p = zonedParts(addZonedDays(startOfZonedDay(new Date(), TZ), offset, TZ), TZ);

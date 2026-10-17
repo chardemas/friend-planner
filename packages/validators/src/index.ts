@@ -115,9 +115,16 @@ export const createExpenseInput = z
     { message: "Shares must add up to the total", path: ["split"] },
   );
 
-export const signInInput = z.object({
+const authCredentials = {
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
-  name: z.string().trim().min(1, "What should friends call you?").max(60).optional(),
+  password: z.string().min(10, "Use at least 10 characters").max(128, "Password must be 128 characters or fewer"),
+};
+
+export const signInInput = z.object(authCredentials);
+
+export const signUpInput = z.object({
+  ...authCredentials,
+  name: z.string().trim().min(1, "What should friends call you?").max(60),
   timezone: z.string().max(64).optional(),
 });
 

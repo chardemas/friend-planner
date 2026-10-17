@@ -1,4 +1,4 @@
-# lowkey
+# kiki
 
 Low-effort plans with your people. Throw out a hang, a weekly game, or dinner. See who's actually free, get quick RSVPs, and split the bill afterwards.
 
@@ -43,7 +43,7 @@ pnpm db:seed                  # optional demo data
 pnpm dev                      # http://localhost:3000
 ```
 
-Sign in with `alex@lowkey.dev`, or `priya@`, `jordan@`, `sam@`, `maya@`, or `theo@`. Any new email creates an account.
+Create an account with your name, email, and a password (minimum 10 characters), or sign in to an existing account. After `pnpm db:seed`, the demo accounts (`alex@lowkey.dev`, `priya@lowkey.dev`, `jordan@lowkey.dev`, `sam@lowkey.dev`, `maya@lowkey.dev`, and `theo@lowkey.dev`) all use the password `lowkey-demo`. The seed script is for local development only and wipes all data.
 
 **Using Supabase:** create a project, open *Project Settings → Database → Connection string*, and paste the URI into `DATABASE_URL` in `.env`. The transaction pooler on port 6543 works fine because the client runs with `prepare: false`.
 
@@ -60,7 +60,7 @@ Sign in with `alex@lowkey.dev`, or `priya@`, `jordan@`, `sam@`, `maya@`, or `the
 
 ## Known gaps / next steps
 
-- **Auth is a stub.** Anyone can sign in with any email. Before real friends use it, swap `signInAction` (`apps/web/src/app/actions.ts`) for Supabase Auth magic links. Sessions are already HMAC-signed cookies, and the RPC route also accepts `Authorization: Bearer <token>` for a mobile client.
+- **Email verification and password recovery.** Accounts use scrypt-hashed passwords and signed sessions, but email addresses are not verified and there is no password-reset flow yet. Add an email provider before using this for production accounts. The RPC route also accepts `Authorization: Bearer <token>` for a mobile client.
 - **Mobile app.** Add `apps/mobile` with Expo and reuse `@lowkey/validators` and the `AppRouter` type, so the same oRPC client works there.
 - **Notifications.** There are no reminders or "new plan" pings yet. A background job (Pickle uses those) could send a nudge when someone hasn't answered by the day before.
 - **Calendar sync.** Plans export to `.ics`. Importing busy times from Google Calendar would fill in availability automatically.

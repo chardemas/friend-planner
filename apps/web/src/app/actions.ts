@@ -2,36 +2,51 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { signIn } from "@lowkey/api";
 import { SESSION_COOKIE, createSessionToken } from "@lowkey/api/session";
 import { db } from "@lowkey/db";
-import { signInInput } from "@lowkey/validators";
+import { signInInput, signUpInput } from "@lowkey/validators";
+import { authenticateUser, createAccount } from "@lowkey/api";
 
-export type SignInState = { step: "email" | "name"; email?: string; error?: string };
+export type SignInState = { mode: "signin" | "signup"; error?: string };
 
 function safeNext(next: FormDataEntryValue | null) {
   const s = typeof next === "string" ? next : "";
   return s.startsWith("/") && !s.startsWith("//") ? s : "/";
 }
 
-export async function signInAction(_prev: SignInState, form: FormData): Promise<SignInState> {
-  const parsed = signInInput.safeParse({
-    email: form.get("email"),
-    name: form.get("name") || undefined,
-    timezone: form.get("timezone") || undefined,
-  });
-  if (!parsed.success) return { step: form.get("name") !== null ? "name" : "email", email: String(form.get("email") ?? ""), error: parsed.error.issues[0]?.message };
-
-  const { user } = await signIn(db, parsed.data);
-  if (!user) return { step: "name", email: parsed.data.email };
-
-  (await cookies()).set(SESSION_COOKIE, createSessionToken(user.id), {
+async function setSession(userId: string) {
+  (await cookies()).set(SESSION_COOKIE, createSessionToken(userId), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 90,
   });
+}
+
+export async function signInAction(_prev: SignInState, form: FormData): Promise<SignInState> {
+  const mode = form.get("mode") === "signup" ? "signup" : "signin";
+  const input = {
+    email: form.get("email"),
+    password: form.get("password"),
+    name: form.get("name") || undefined,
+    timezone: form.get("timezone") || undefined,
+  };
+
+  if (mode === "signup") {
+    const parsed = signUpInput.safeParse(input);
+    if (!parsed.success) return { mode, error: parsed.error.issues[0]?.message };
+    const user = await createAccount(db, parsed.data);
+    if (!user) return { mode, error: "An account with that email already exists. Sign in instead." };
+    await setSession(user.id);
+  } else {
+    const parsed = signInInput.safeParse(input);
+    if (!parsed.success) return { mode, error: parsed.error.issues[0]?.message };
+    const user = await authenticateUser(db, parsed.data);
+    if (!user) return { mode, error: "Email or password is incorrect." };
+    await setSession(user.id);
+  }
+
   redirect(safeNext(form.get("next")));
 }
 

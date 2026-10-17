@@ -12,12 +12,13 @@ import * as plans from "../src/services/plans";
 import * as users from "../src/services/users";
 
 const TZ = "America/New_York";
+const DEMO_PASSWORD = "lowkey-demo";
 type User = typeof schema.users.$inferSelect;
 
 async function main() {
   await db.execute(sql`truncate ${schema.users}, ${schema.crews} restart identity cascade`);
 
-  const people = await Promise.all(
+  const seededPeople = await Promise.all(
     [
       ["Alex", "alex@lowkey.dev"],
       ["Priya", "priya@lowkey.dev"],
@@ -25,8 +26,17 @@ async function main() {
       ["Sam", "sam@lowkey.dev"],
       ["Maya", "maya@lowkey.dev"],
       ["Theo", "theo@lowkey.dev"],
-    ].map(async ([name, email]) => (await users.signIn(db, { name: name!, email: email!, timezone: TZ })).user!),
+    ].map(async ([name, email]) => await users.createAccount(db, {
+      name: name!,
+      email: email!,
+      password: DEMO_PASSWORD,
+      timezone: TZ,
+    })),
   );
+  const people: User[] = seededPeople.map((user) => {
+    if (!user) throw new Error("Could not create a demo account");
+    return user;
+  });
   const [alex, priya, jordan, sam, maya, theo] = people as [User, User, User, User, User, User];
 
   const volleyball = await crews.createCrew(db, alex.id, { name: "Tuesday Volleyball", emoji: "🏐" });
@@ -143,6 +153,7 @@ async function main() {
   await expenses.settleUp(db, jordan.id, { crewId: volleyball.id, toUserId: alex.id, amountCents: 1100 });
 
   console.log("✓ seeded. Sign in as alex@lowkey.dev (or priya@, jordan@, sam@, maya@, theo@)");
+  console.log(`  Demo password: ${DEMO_PASSWORD}`);
   console.log(`  Volleyball invite code: ${volleyball.inviteCode}`);
   process.exit(0);
 }

@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull(),
+  passwordHash: text("password_hash"),
   /** IANA zone; weekly availability is stored in this zone's wall-clock time. */
   timezone: text("timezone").notNull().default("America/New_York"),
   color: text("color").notNull().default("#7c5cff"),

@@ -22,7 +22,7 @@ export function AppNav() {
       <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
           <Link href="/" className="text-lg font-semibold tracking-tight">
-            lowkey<span className="text-brand">.</span>
+            kiki<span className="text-brand">.</span>
           </Link>
           <nav className="hidden gap-1 sm:flex">
             {links.map((l) => (

@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "lowkey · plans with friends",
+  title: "kiki · plans with friends",
   description: "Low-effort plans with your people: invites, who's free, and splitting the bill.",
 };
 
