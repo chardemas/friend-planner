@@ -12,6 +12,20 @@ const config: NextConfig = {
   agentRules: false,
   serverExternalPackages: ["postgres"],
   turbopack: { root: fileURLToPath(new URL("../..", import.meta.url)) },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Reset/verify links carry their token in the URL; never send it to other sites.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
 };
 
 export default config;
