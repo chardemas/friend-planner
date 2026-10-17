@@ -23,6 +23,7 @@ export const rsvpStatus = pgEnum("rsvp_status", ["going", "maybe", "declined"]);
 export const crewRole = pgEnum("crew_role", ["owner", "member"]);
 export const availabilityKind = pgEnum("availability_kind", ["busy", "free"]);
 export const splitMethod = pgEnum("split_method", ["equal", "exact"]);
+export const authTokenPurpose = pgEnum("auth_token_purpose", ["verify_email", "reset_password"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -32,8 +33,39 @@ export const users = pgTable("users", {
   /** IANA zone; weekly availability is stored in this zone's wall-clock time. */
   timezone: text("timezone").notNull().default("America/New_York"),
   color: text("color").notNull().default("#7c5cff"),
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  /** Set when the account is deleted. The row is kept (anonymized) so shared expense history still adds up. */
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   ...timestamps,
 }, (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)]);
+
+/** One row per signed-in device. The client holds a random token; we store only its SHA-256. */
+export const sessions = pgTable("sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}, (t) => [index("sessions_user_idx").on(t.userId)]);
+
+/** Single-use links sent by email (verify address, reset password). Stored hashed, like sessions. */
+export const authTokens = pgTable("auth_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  purpose: authTokenPurpose("purpose").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [index("auth_tokens_user_idx").on(t.userId, t.purpose)]);
+
+/** Fixed-window counters for rate limiting. Lives in Postgres so it works across serverless instances. */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  count: integer("count").notNull(),
+});
 
 export const crews = pgTable("crews", {
   id: uuid("id").primaryKey().defaultRandom(),

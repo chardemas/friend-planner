@@ -115,10 +115,9 @@ export const createExpenseInput = z
     { message: "Shares must add up to the total", path: ["split"] },
   );
 
-const authCredentials = {
-  email: z.string().trim().toLowerCase().email("Enter a valid email"),
-  password: z.string().min(10, "Use at least 10 characters").max(128, "Password must be 128 characters or fewer"),
-};
+const email = z.string().trim().toLowerCase().email("Enter a valid email");
+const password = z.string().min(10, "Use at least 10 characters").max(128, "Password must be 128 characters or fewer");
+const authCredentials = { email, password };
 
 export const signInInput = z.object(authCredentials);
 
@@ -126,6 +125,15 @@ export const signUpInput = z.object({
   ...authCredentials,
   name: z.string().trim().min(1, "What should friends call you?").max(60),
   timezone: z.string().max(64).optional(),
+});
+
+export const forgotPasswordInput = z.object({ email });
+
+export const resetPasswordInput = z.object({ token: z.string().min(1).max(128), password });
+
+export const deleteAccountInput = z.object({
+  password: z.string().min(1, "Enter your password").max(128),
+  confirm: z.literal("DELETE", { error: 'Type DELETE to confirm' }),
 });
 
 export const updateProfileInput = z.object({

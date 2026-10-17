@@ -11,8 +11,19 @@ export async function getTimezone(db: DbOrTx, userId: string) {
   return u?.timezone ?? "America/New_York";
 }
 
+/** What the client may see about its own account. Never includes the password hash. */
+const profileColumns = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  timezone: users.timezone,
+  color: users.color,
+  emailVerifiedAt: users.emailVerifiedAt,
+  createdAt: users.createdAt,
+};
+
 export async function me(db: DbOrTx, userId: string) {
-  const u = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  const [u] = await db.select(profileColumns).from(users).where(eq(users.id, userId));
   if (!u) throw notFound("User");
   return u;
 }
@@ -84,6 +95,6 @@ export async function authenticateUser(db: DbOrTx, input: { email: string; passw
 
 export async function updateProfile(db: DbOrTx, userId: string, input: { name?: string; timezone?: string }) {
   if (input.timezone && !isValidTimeZone(input.timezone)) throw badRequest("Unknown time zone");
-  const [u] = await db.update(users).set(input).where(eq(users.id, userId)).returning();
+  const [u] = await db.update(users).set(input).where(eq(users.id, userId)).returning(profileColumns);
   return u!;
 }

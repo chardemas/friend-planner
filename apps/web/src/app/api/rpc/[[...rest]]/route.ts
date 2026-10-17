@@ -1,7 +1,7 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { onError } from "@orpc/server";
 import { router } from "@lowkey/api";
-import { SESSION_COOKIE, readSessionToken } from "@lowkey/api/session";
+import { SESSION_COOKIE, resolveSession } from "@lowkey/api/session";
 import { db } from "@lowkey/db";
 
 const handler = new RPCHandler(router, {
@@ -20,13 +20,13 @@ function sessionFrom(request: Request) {
     ?.split(/;\s*/)
     .find((c) => c.startsWith(`${SESSION_COOKIE}=`))
     ?.slice(SESSION_COOKIE.length + 1);
-  return readSessionToken(bearer ?? (cookie ? decodeURIComponent(cookie) : null));
+  return resolveSession(db, bearer ?? (cookie ? decodeURIComponent(cookie) : null));
 }
 
 async function handle(request: Request) {
   const { response } = await handler.handle(request, {
     prefix: "/api/rpc",
-    context: { db, userId: sessionFrom(request) },
+    context: { db, userId: await sessionFrom(request) },
   });
   return response ?? new Response("Not found", { status: 404 });
 }
