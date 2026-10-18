@@ -32,7 +32,7 @@ You don't need to create tables. The first production deploy runs the migrations
    | `RESEND_API_KEY` | from step 2 |
    | `EMAIL_FROM` | e.g. `kiki <hello@yourdomain.com>` |
    | `APP_URL` | `https://yourdomain.com` (optional; defaults to the Vercel production domain) |
-   | `CONTACT_EMAIL` | the address shown on `/privacy` |
+   | `CONTACT_EMAIL` | your own email: shown on `/privacy`, and where replies to kiki's emails go |
 
    For **Preview** deployments, either point `DATABASE_URL` at a separate Supabase project or leave it unset. Never point previews at the production database: they skip migrations, but they still read and write data.
 4. Deploy. In the build log, look for `✓ migrations applied` before `next build`.

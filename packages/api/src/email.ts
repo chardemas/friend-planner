@@ -1,5 +1,6 @@
 /**
- * Transactional email through Resend's HTTP API (https://resend.com). Set RESEND_API_KEY and EMAIL_FROM.
+ * Transactional email through Resend's HTTP API (https://resend.com). Set RESEND_API_KEY and EMAIL_FROM;
+ * replies go to CONTACT_EMAIL when it's set.
  * Without a key, development prints the message to the console so links can be clicked from the terminal.
  */
 export function appUrl(path = "") {
@@ -23,7 +24,12 @@ export async function sendEmail(message: { to: string; subject: string; text: st
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM ?? "kiki <onboarding@resend.dev>", ...message }),
+    body: JSON.stringify({
+      from: process.env.EMAIL_FROM ?? "kiki <onboarding@resend.dev>",
+      // The from-address has no inbox, so replies go to the contact address instead.
+      ...(process.env.CONTACT_EMAIL && { reply_to: process.env.CONTACT_EMAIL }),
+      ...message,
+    }),
   });
   if (!res.ok) console.error(`[email] Resend returned ${res.status}: ${await res.text()}`);
 }
