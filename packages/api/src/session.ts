@@ -1,33 +1,55 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { and, eq, gt, isNull, lt, ne, sql } from "drizzle-orm";
+import { sessions, users, type DbOrTx } from "@lowkey/db";
+import { SESSION_TTL_MS } from "./session-cookie";
 
 /**
- * Signed session tokens: `v1.<userId>.<signature>`.
- * The web app stores this in an httpOnly cookie; the mobile app can send it as a Bearer token.
+ * Database-backed sessions. The client holds a random token (web: httpOnly cookie, mobile: Bearer token)
+ * and we store only its SHA-256, so a leaked database can't be replayed. Deleting the row signs that device out.
  */
-export const SESSION_COOKIE = "lowkey_session";
+export { SESSION_COOKIE, SESSION_TTL_MS } from "./session-cookie";
+/** Sessions slide forward at most once a day so active users stay signed in without a write per request. */
+const REFRESH_AFTER_MS = 24 * 60 * 60 * 1000;
 
-function secret() {
-  const s = process.env.SESSION_SECRET;
-  if (!s && process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET must be set in production");
-  return s ?? "dev-only-insecure-secret";
+export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+export const randomToken = () => randomBytes(32).toString("base64url");
+
+export async function createSession(db: DbOrTx, userId: string) {
+  const token = randomToken();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  await db.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt });
+  // Sweep this user's dead sessions so the table doesn't grow forever.
+  await db.delete(sessions).where(and(eq(sessions.userId, userId), lt(sessions.expiresAt, sql`now()`)));
+  return { token, expiresAt };
 }
 
-function sign(payload: string) {
-  return createHmac("sha256", secret()).update(payload).digest("base64url");
+/** Returns the signed-in user's id, or null if the token is missing, unknown, expired, or the account was deleted. */
+export async function resolveSession(db: DbOrTx, token: string | undefined | null): Promise<string | null> {
+  if (!token || token.length > 128) return null;
+  const [row] = await db
+    .select({ id: sessions.id, userId: sessions.userId, lastUsedAt: sessions.lastUsedAt })
+    .from(sessions)
+    .innerJoin(users, eq(users.id, sessions.userId))
+    .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, sql`now()`), isNull(users.deletedAt)))
+    .limit(1);
+  if (!row) return null;
+  if (Date.now() - row.lastUsedAt.getTime() > REFRESH_AFTER_MS) {
+    await db
+      .update(sessions)
+      .set({ lastUsedAt: new Date(), expiresAt: new Date(Date.now() + SESSION_TTL_MS) })
+      .where(eq(sessions.id, row.id));
+  }
+  return row.userId;
 }
 
-export function createSessionToken(userId: string) {
-  const payload = `v1.${userId}`;
-  return `${payload}.${sign(payload)}`;
+export async function revokeSession(db: DbOrTx, token: string | undefined | null) {
+  if (token) await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
 }
 
-export function readSessionToken(token: string | undefined | null): string | null {
-  if (!token) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3 || parts[0] !== "v1") return null;
-  const payload = `${parts[0]}.${parts[1]}`;
-  const expected = Buffer.from(sign(payload));
-  const actual = Buffer.from(parts[2]!);
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
-  return parts[1]!;
+/** Signs the user out everywhere, optionally keeping the current device. */
+export async function revokeAllSessions(db: DbOrTx, userId: string, keepToken?: string) {
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.userId, userId), keepToken ? ne(sessions.tokenHash, hashToken(keepToken)) : undefined));
 }
+

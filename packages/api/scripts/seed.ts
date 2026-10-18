@@ -37,6 +37,7 @@ async function main() {
     if (!user) throw new Error("Could not create a demo account");
     return user;
   });
+  await db.update(schema.users).set({ emailVerifiedAt: new Date() });
   const [alex, priya, jordan, sam, maya, theo] = people as [User, User, User, User, User, User];
 
   const volleyball = await crews.createCrew(db, alex.id, { name: "Tuesday Volleyball", emoji: "🏐" });

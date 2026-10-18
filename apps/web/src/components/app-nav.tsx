@@ -39,7 +39,9 @@ export function AppNav() {
             <Link href="/plans/new" className="btn-primary hidden sm:inline-flex">+ New plan</Link>
             {me && (
               <form action={signOutAction} className="flex items-center gap-2">
-                <Avatar name={me.name} color={me.color} />
+                <Link href="/account" title="Account">
+                  <Avatar name={me.name} color={me.color} />
+                </Link>
                 <button className="text-xs text-muted hover:text-ink" title="Sign out">Sign out</button>
               </form>
             )}

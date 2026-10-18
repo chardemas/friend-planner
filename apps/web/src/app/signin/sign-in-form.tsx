@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signInAction, type SignInState } from "../actions";
 
@@ -32,7 +33,12 @@ export function SignInForm({ next }: { next?: string }) {
         </div>
       )}
       <div>
-        <label className="label" htmlFor="password">Password</label>
+        <div className="flex items-baseline justify-between">
+          <label className="label" htmlFor="password">Password</label>
+          {mode === "signin" && (
+            <Link href="/forgot" className="text-xs text-muted underline underline-offset-4 hover:text-ink">Forgot?</Link>
+          )}
+        </div>
         <input
           id="password"
           name="password"

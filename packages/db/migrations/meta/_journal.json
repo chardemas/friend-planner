@@ -15,6 +15,20 @@
       "when": 1792262270670,
       "tag": "0001_polite_robbie_robertson",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792264099436,
+      "tag": "0002_wise_pixie",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792264493091,
+      "tag": "0003_enable_rls",
+      "breakpoints": true
     }
   ]
 }
