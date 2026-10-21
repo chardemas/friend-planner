@@ -131,7 +131,7 @@ export default function NewPlanPage() {
                 key={k}
                 type="button"
                 onClick={() => setKind(k)}
-                className={`rounded-full border px-3 py-1.5 text-sm capitalize ${kind === k ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
+                className={`rounded-full border px-3 py-1.5 text-sm capitalize transition ${kind === k ? "border-transparent bg-gradient-to-r from-brand to-violet font-semibold text-white shadow-(--shadow-glow)" : "border-line bg-card hover:bg-brand-soft"}`}
               >
                 {kindEmoji[k]} {k}
               </button>
@@ -203,7 +203,7 @@ export default function NewPlanPage() {
                       type="button"
                       key={m.id}
                       onClick={() => setInvitees((xs) => (on ? (xs ?? []).filter((x) => x !== m.id) : [...(xs ?? []), m.id]))}
-                      className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-sm ${on ? "border-ink bg-ink/5" : "border-line opacity-60"}`}
+                      className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-sm ${on ? "border-brand/40 bg-brand-soft" : "border-line opacity-60"}`}
                     >
                       <Avatar name={m.name} color={m.color} size={20} /> {m.name}
                     </button>

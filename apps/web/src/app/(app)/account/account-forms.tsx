@@ -7,6 +7,7 @@ import {
   signOutOtherDevicesAction,
   type FormState,
 } from "@/app/actions";
+import { PasswordInput } from "@/components/password-input";
 
 function Feedback({ state }: { state: FormState }) {
   if (state.error) return <p className="text-sm text-nope">{state.error}</p>;
@@ -40,7 +41,7 @@ export function DeleteAccountForm() {
     <form action={action} className="space-y-3">
       <div>
         <label className="label" htmlFor="delete-password">Password</label>
-        <input id="delete-password" name="password" type="password" required autoComplete="current-password" className="input" />
+        <PasswordInput id="delete-password" name="password" required autoComplete="current-password" />
       </div>
       <div>
         <label className="label" htmlFor="delete-confirm">Type DELETE to confirm</label>

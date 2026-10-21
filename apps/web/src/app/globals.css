@@ -1,21 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #faf7f2;
+  --color-paper: #fdf6fb;
   --color-card: #ffffff;
-  --color-ink: #1f1d1a;
-  --color-muted: #6f6a62;
-  --color-line: #e9e3d9;
-  --color-brand: #5b47e0;
-  --color-brand-soft: #eeebff;
-  --color-go: #1c8a5f;
-  --color-go-soft: #e3f4ec;
-  --color-maybe: #b7791f;
-  --color-maybe-soft: #fbf0dc;
-  --color-nope: #c2413a;
-  --color-nope-soft: #fbe6e4;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --radius-xl: 0.875rem;
+  --color-ink: #2b1838;
+  --color-muted: #84708f;
+  --color-line: #f1e1ef;
+  --color-brand: #e0409a;
+  --color-brand-soft: #fde7f3;
+  --color-violet: #8b5cf6;
+  --color-violet-soft: #efe8ff;
+  --color-peach: #ff9f7a;
+  --color-go: #12a383;
+  --color-go-soft: #dcf7ef;
+  --color-maybe: #ee8a2b;
+  --color-maybe-soft: #fff0df;
+  --color-nope: #e5484d;
+  --color-nope-soft: #ffe6e6;
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-fredoka), var(--font-nunito), ui-rounded, system-ui, sans-serif;
+  --radius-xl: 1rem;
+  --shadow-soft: 0 1px 2px rgb(140 60 120 / 0.06), 0 6px 20px -6px rgb(200 70 150 / 0.14);
+  --shadow-glow: 0 6px 18px -6px rgb(224 64 154 / 0.55);
 }
 
 html {
@@ -24,28 +30,47 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Soft pastel blobs behind everything. */
 body {
-  background: var(--color-paper);
+  background:
+    radial-gradient(40rem 28rem at 0% 0%, rgb(255 182 222 / 0.45), transparent 70%),
+    radial-gradient(36rem 26rem at 100% 10%, rgb(196 170 255 / 0.4), transparent 70%),
+    radial-gradient(40rem 30rem at 50% 110%, rgb(255 205 180 / 0.35), transparent 70%),
+    var(--color-paper);
+  background-attachment: fixed;
 }
 
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-ink);
+}
+
+@utility text-gradient {
+  @apply bg-gradient-to-r from-brand to-violet bg-clip-text text-transparent;
+}
 @utility card {
-  @apply rounded-xl border border-line bg-card;
+  @apply rounded-2xl border border-line bg-card shadow-(--shadow-soft);
 }
 @utility btn {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none;
 }
 @utility btn-primary {
-  @apply btn bg-ink text-white hover:bg-black;
+  @apply btn bg-gradient-to-r from-brand to-violet text-white shadow-(--shadow-glow) hover:brightness-110 hover:-translate-y-px;
 }
 @utility btn-ghost {
-  @apply btn border border-line bg-card hover:bg-paper;
+  @apply btn border border-line bg-card text-ink hover:border-brand/30 hover:bg-brand-soft;
 }
 @utility input {
-  @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15;
+  @apply w-full rounded-xl border border-line bg-white px-3.5 py-2 text-sm outline-none transition placeholder:text-muted/70 focus:border-brand focus:ring-4 focus:ring-brand/15;
 }
 @utility label {
-  @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted;
+  @apply mb-1 block text-xs font-bold uppercase tracking-wide text-muted;
 }
 @utility chip {
-  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
 }

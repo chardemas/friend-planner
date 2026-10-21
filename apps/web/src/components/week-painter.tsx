@@ -1,70 +1,161 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { orpc } from "@/lib/orpc";
-import { minuteLabel } from "@/lib/format";
+import { minuteLabel, startOfWeek } from "@/lib/format";
 
-type Cell = "busy" | "free" | undefined;
-type Brush = "busy" | "free" | "erase";
-type Block = { kind: "busy" | "free"; dayOfWeek: number | null; startMinute: number | null; endMinute: number | null };
+type Kind = "busy" | "free";
+type Cell = { kind: Kind; label?: string };
+type Cells = Map<string, Cell>;
+type Brush = Kind | "erase";
+export type WeeklyBlock = { kind: Kind; label: string | null; dayOfWeek: number | null; startMinute: number | null; endMinute: number | null };
+export type OneOffBlock = { id: string; kind: Kind; label: string | null; startsAt: Date | null; endsAt: Date | null };
 
-// Display Monday-first; store Sunday=0 like Date.getDay().
-const DAYS = [1, 2, 3, 4, 5, 6, 0];
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const SLOT = 30;
+export const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const SLOT = 30;
+const DAY_MS = 864e5;
 const key = (d: number, m: number) => `${d}:${m}`;
+const same = (a?: Cell, b?: Cell) => a?.kind === b?.kind && (a?.label ?? "") === (b?.label ?? "");
 
-function blocksToCells(blocks: Block[]) {
-  const cells = new Map<string, Cell>();
+function blocksToCells(blocks: WeeklyBlock[]) {
+  const cells: Cells = new Map();
   for (const b of blocks) {
     if (b.dayOfWeek === null || b.startMinute === null || b.endMinute === null) continue;
-    for (let m = b.startMinute; m < b.endMinute; m += SLOT) cells.set(key(b.dayOfWeek, m), b.kind);
+    for (let m = b.startMinute; m < b.endMinute; m += SLOT) cells.set(key(b.dayOfWeek, m), { kind: b.kind, label: b.label ?? undefined });
   }
   return cells;
 }
 
-function cellsToBlocks(cells: Map<string, Cell>, kind: "busy" | "free") {
-  const out: { dayOfWeek: number; startMinute: number; endMinute: number }[] = [];
+/** Collapse cells into runs of the same kind and label, per weekday. */
+export function cellsToRuns(cells: Cells) {
+  const out: { dayOfWeek: number; startMinute: number; endMinute: number; kind: Kind; label?: string }[] = [];
   for (const d of [0, 1, 2, 3, 4, 5, 6]) {
-    let run: number | null = null;
+    let run: { start: number; cell: Cell } | null = null;
     for (let m = 0; m <= 24 * 60; m += SLOT) {
-      const on = m < 24 * 60 && cells.get(key(d, m)) === kind;
-      if (on && run === null) run = m;
-      if (!on && run !== null) {
-        out.push({ dayOfWeek: d, startMinute: run, endMinute: m });
+      const c = m < 24 * 60 ? cells.get(key(d, m)) : undefined;
+      if (run && !same(run.cell, c)) {
+        out.push({ dayOfWeek: d, startMinute: run.start, endMinute: m, ...run.cell });
         run = null;
       }
+      if (c && !run) run = { start: m, cell: c };
     }
   }
   return out;
 }
 
-/** Paint your typical week: drag across cells to mark busy or free. */
-export function WeekPainter({ blocks }: { blocks: Block[] }) {
+/**
+ * The user's repeating week as editable half-hour cells. Edits save themselves
+ * shortly after they stop, so there's no Save button to forget.
+ */
+export function useWeeklyPattern(blocks: WeeklyBlock[]) {
   const qc = useQueryClient();
   const [cells, setCells] = useState(() => blocksToCells(blocks));
-  const [brush, setBrush] = useState<Brush>("busy");
   const [dirty, setDirty] = useState(false);
-  const [allDay, setAllDay] = useState(false);
-  const painting = useRef<Cell | "erase" | null>(null);
-  const lastCell = useRef<string | null>(null);
+  const edits = useRef(0);
 
   useEffect(() => {
     if (!dirty) setCells(blocksToCells(blocks));
   }, [blocks, dirty]);
 
   const save = useMutation({
-    mutationFn: async () => {
-      await orpc.availability.setWeekly.call({ kind: "busy", blocks: cellsToBlocks(cells, "busy") });
-      await orpc.availability.setWeekly.call({ kind: "free", blocks: cellsToBlocks(cells, "free") });
+    mutationFn: async ({ snapshot }: { snapshot: Cells; version: number }) => {
+      const runs = cellsToRuns(snapshot);
+      for (const kind of ["busy", "free"] as const) {
+        const mine = runs.filter((r) => r.kind === kind).map(({ kind: _, ...r }) => r);
+        await orpc.availability.setWeekly.call({ kind, blocks: mine });
+      }
     },
-    onSuccess: async () => {
+    onSuccess: async (_, { version }) => {
       // Wait for fresh blocks before leaving edit mode, so the grid doesn't flash the old pattern.
       await qc.invalidateQueries({ queryKey: orpc.availability.key() });
-      setDirty(false);
+      if (version === edits.current) setDirty(false);
     },
   });
+
+  useEffect(() => {
+    if (!dirty || save.isPending) return;
+    const t = setTimeout(() => save.mutate({ snapshot: cells, version: edits.current }), 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cells, dirty, save.isPending]);
+
+  // Kept in sync immediately, so several edits between renders (fast drags) build on each other.
+  const latest = useRef(cells);
+  latest.current = cells;
+  const update = (fn: (prev: Cells) => Cells) => {
+    const next = fn(latest.current);
+    if (next === latest.current) return;
+    latest.current = next;
+    edits.current++;
+    setCells(next);
+    setDirty(true);
+  };
+
+  /** Set (or clear, with `cell` undefined) every slot from `start` to `end` minutes on each of `days`. */
+  const fill = (days: number[], start: number, end: number, cell: Cell | undefined) =>
+    update((prev) => {
+      const m = new Map(prev);
+      for (const d of days)
+        for (let t = start; t < end; t += SLOT) {
+          if (cell) m.set(key(d, t), cell);
+          else m.delete(key(d, t));
+        }
+      return m;
+    });
+
+  const status: "saving" | "saved" | "error" = save.isError && !dirty ? "error" : dirty || save.isPending ? "saving" : "saved";
+  return { cells, update, fill, status, error: save.error };
+}
+
+export type WeeklyPattern = ReturnType<typeof useWeeklyPattern>;
+
+const COLORS: Record<Kind, string> = { busy: "var(--color-nope)", free: "var(--color-go)" };
+const cellStyle = (kind: Kind, oneOff: boolean): React.CSSProperties =>
+  oneOff
+    ? { background: `repeating-linear-gradient(135deg, ${COLORS[kind]} 0 6px, color-mix(in oklab, ${COLORS[kind]} 75%, white) 6px 12px)` }
+    : { background: `color-mix(in oklab, ${COLORS[kind]} 78%, white)` };
+
+/** A real, dated week: your repeating pattern (paintable) with one-off blocks drawn on top. */
+export function WeekPainter({ pattern, oneOff }: { pattern: WeeklyPattern; oneOff: OneOffBlock[] }) {
+  const { cells, update, status } = pattern;
+  const [brush, setBrush] = useState<Brush>("busy");
+  const [early, setEarly] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const painting = useRef<Cell | "erase" | null>(null);
+  const lastCell = useRef<string | null>(null);
+
+  const dates = useMemo(() => {
+    const start = startOfWeek(new Date());
+    start.setDate(start.getDate() + weekOffset * 7);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }, [weekOffset]);
+
+  const startMinute = early ? 0 : 7 * 60;
+  const rows: number[] = [];
+  for (let m = startMinute; m < 24 * 60; m += SLOT) rows.push(m);
+
+  /** One-off blocks that touch this week, keyed by `${column}:${minute}`. */
+  const overlay = useMemo(() => {
+    const map = new Map<string, Cell & { id: string }>();
+    for (const b of oneOff) {
+      const s = b.startsAt!.getTime();
+      const e = b.endsAt!.getTime();
+      dates.forEach((date, i) => {
+        if (e <= date.getTime() || s >= date.getTime() + DAY_MS) return;
+        for (let m = 0; m < 24 * 60; m += SLOT) {
+          const slot = new Date(date);
+          slot.setMinutes(m);
+          if (s < slot.getTime() + SLOT * 6e4 && e > slot.getTime()) map.set(key(i, m), { kind: b.kind, label: b.label ?? undefined, id: b.id });
+        }
+      });
+    }
+    return map;
+  }, [oneOff, dates]);
 
   /** Paint `k`, plus any cells skipped between it and the last one when dragging fast within a day. */
   const apply = (k: string, value: Cell | "erase") => {
@@ -77,8 +168,8 @@ export function WeekPainter({ blocks }: { blocks: Block[] }) {
     }
     lastCell.current = k;
     const next = value === "erase" ? undefined : value;
-    setCells((prev) => {
-      if (keys.every((x) => prev.get(x) === next)) return prev;
+    update((prev) => {
+      if (keys.every((x) => same(prev.get(x), next))) return prev;
       const m = new Map(prev);
       for (const x of keys) {
         if (next) m.set(x, next);
@@ -86,22 +177,50 @@ export function WeekPainter({ blocks }: { blocks: Block[] }) {
       }
       return m;
     });
-    setDirty(true);
   };
 
-  const cellFromPoint = (x: number, y: number) =>
-    (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>("[data-cell]")?.dataset.cell;
+  const qc = useQueryClient();
+  const removeOneOff = useMutation(
+    orpc.availability.remove.mutationOptions({ onSettled: () => qc.invalidateQueries({ queryKey: orpc.availability.key() }) }),
+  );
+  const erased = useRef(new Set<string>());
 
-  const startMinute = allDay ? 0 : 7 * 60;
-  const rows: number[] = [];
-  for (let m = startMinute; m < 24 * 60; m += SLOT) rows.push(m);
+  /** Paint a weekly cell, or (with the eraser) delete a one-off block the pointer touches. */
+  const hit = (x: number, y: number, value: Cell | "erase") => {
+    const el = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>("[data-cell],[data-block]");
+    if (!el) return;
+    if (el.dataset.cell) return apply(el.dataset.cell, value);
+    const id = el.dataset.block!;
+    if (value === "erase" && !erased.current.has(id)) {
+      erased.current.add(id);
+      removeOneOff.mutate({ blockId: id });
+    }
+  };
 
-  const colors: Record<string, string> = { busy: "bg-nope/80", free: "bg-go/80" };
+  const today = new Date().toDateString();
+  const first = dates[0]!;
+  const last = dates[6]!;
+  const monthTitle =
+    first.getMonth() === last.getMonth()
+      ? first.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+      : `${first.toLocaleDateString("en-US", { month: "short" })} – ${last.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
 
   return (
     <div className="card min-w-0 overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
-        <div className="flex rounded-lg border border-line p-0.5 text-sm">
+        <h2 className="mr-1 text-lg font-semibold">{monthTitle}</h2>
+        <div className="flex items-center gap-1">
+          <button className="btn-ghost px-2.5 py-1" onClick={() => setWeekOffset((w) => w - 1)} aria-label="Previous week">‹</button>
+          <button className="btn-ghost px-3 py-1" onClick={() => setWeekOffset(0)} disabled={weekOffset === 0}>Today</button>
+          <button className="btn-ghost px-2.5 py-1" onClick={() => setWeekOffset((w) => w + 1)} aria-label="Next week">›</button>
+        </div>
+        <span className="ml-auto text-xs font-semibold text-muted" aria-live="polite">
+          {status === "saving" ? "Saving…" : status === "error" ? <span className="text-nope">Couldn&apos;t save — try again</span> : "Saved ✓"}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+        <span className="text-xs text-muted">Drag to paint your usual week:</span>
+        <div className="flex rounded-full border border-line bg-paper p-0.5 text-sm">
           {(
             [
               ["busy", "Busy", "bg-nope text-white"],
@@ -109,68 +228,86 @@ export function WeekPainter({ blocks }: { blocks: Block[] }) {
               ["erase", "Erase", "bg-ink text-white"],
             ] as const
           ).map(([b, label, on]) => (
-            <button key={b} onClick={() => setBrush(b)} className={`rounded-md px-3 py-1 font-medium ${brush === b ? on : "text-muted"}`}>
+            <button key={b} onClick={() => setBrush(b)} className={`rounded-full px-3 py-1 font-semibold transition ${brush === b ? on : "text-muted"}`}>
               {label}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1.5 text-xs text-muted">
-          <input type="checkbox" className="accent-brand" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
-          show early morning
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+          <input type="checkbox" className="accent-brand" checked={early} onChange={(e) => setEarly(e.target.checked)} />
+          early morning
         </label>
-        <div className="ml-auto flex items-center gap-2">
-          {dirty && (
-            <button className="text-sm text-muted" onClick={() => { setCells(blocksToCells(blocks)); setDirty(false); }}>
-              Undo
-            </button>
-          )}
-          <button className="btn-primary" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>
-            {save.isPending ? "Saving…" : dirty ? "Save my week" : "Saved"}
-          </button>
-        </div>
       </div>
       <div
         className="select-none overflow-x-auto"
         style={{ touchAction: "none" }}
         onPointerDown={(e) => {
-          const k = cellFromPoint(e.clientX, e.clientY);
-          if (!k) return;
-          // Tapping a cell already painted with this brush clears it.
-          const value = brush === "erase" ? "erase" : cells.get(k) === brush ? "erase" : brush;
+          const value: Cell | "erase" = brush === "erase" ? "erase" : { kind: brush };
           painting.current = value;
           lastCell.current = null;
-          apply(k, value);
+          erased.current = new Set();
+          hit(e.clientX, e.clientY, value);
         }}
         onPointerMove={(e) => {
           if (painting.current === null) return;
-          const k = cellFromPoint(e.clientX, e.clientY);
-          if (k) apply(k, painting.current);
+          hit(e.clientX, e.clientY, painting.current);
         }}
         onPointerUp={() => (painting.current = null)}
         onPointerLeave={() => (painting.current = null)}
       >
-        <div className="grid min-w-[330px]" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
-          <div />
-          {DAYS.map((d) => (
-            <div key={d} className="border-b border-line py-1.5 text-center text-xs font-medium">{DAY_NAMES[d]}</div>
-          ))}
+        <div className="grid min-w-[340px]" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
+          <div className="border-b border-line" />
+          {dates.map((date) => {
+            const isToday = date.toDateString() === today;
+            return (
+              <div key={date.toDateString()} className="border-b border-line py-1.5 text-center">
+                <div className={`text-[11px] font-semibold ${isToday ? "text-brand" : "text-muted"}`}>{DAY_NAMES[date.getDay()]}</div>
+                <div
+                  className={`mx-auto mt-0.5 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${
+                    isToday ? "bg-gradient-to-br from-brand to-violet text-white shadow-(--shadow-glow)" : ""
+                  }`}
+                >
+                  {date.getDate()}
+                </div>
+              </div>
+            );
+          })}
           {rows.map((m) => (
             <Row key={m} m={m}>
-              {DAYS.map((d) => {
-                const c = cells.get(key(d, m));
+              {dates.map((date, i) => {
+                const dow = date.getDay();
+                const shown = (t: number) => overlay.get(key(i, t)) ?? cells.get(key(dow, t));
+                const extra = overlay.get(key(i, m));
+                const c = shown(m);
+                // Label the first slot of each run.
+                const runStart = c && (m === startMinute || !same(shown(m - SLOT), c) || overlay.has(key(i, m - SLOT)) !== !!extra);
                 return (
                   <div
-                    key={d}
-                    data-cell={key(d, m)}
-                    className={`h-4 cursor-pointer border-l border-line/70 ${m % 60 === 0 ? "border-t border-t-line" : ""} ${c ? colors[c] : "hover:bg-ink/5"}`}
-                  />
+                    key={i}
+                    // One-off blocks sit on top: the eraser deletes them, other brushes leave them alone.
+                    data-cell={extra ? undefined : key(dow, m)}
+                    data-block={extra?.id}
+                    title={c ? `${c.label ?? (c.kind === "busy" ? "Busy" : "Free")}${extra ? " (just this date)" : " (every week)"}` : undefined}
+                    className={`relative h-4 border-l border-line/70 ${m % 60 === 0 ? "border-t border-t-line" : ""} ${extra && brush !== "erase" ? "cursor-default" : "cursor-pointer"} ${c ? "" : "hover:bg-brand-soft"}`}
+                    style={c ? cellStyle(c.kind, !!extra) : undefined}
+                  >
+                    {runStart && c.label && (
+                      <span className="pointer-events-none absolute inset-x-0 top-0 z-10 truncate px-1 text-[10px] font-bold leading-4 text-white">
+                        {c.label}
+                      </span>
+                    )}
+                  </div>
                 );
               })}
             </Row>
           ))}
         </div>
       </div>
-      {save.error && <p className="p-3 text-sm text-nope">{save.error.message}</p>}
+      <div className="flex flex-wrap items-center gap-3 border-t border-line px-3 py-2 text-xs text-muted">
+        <span className="flex items-center gap-1"><i className="inline-block h-3 w-3 rounded-sm" style={cellStyle("busy", false)} /> busy every week</span>
+        <span className="flex items-center gap-1"><i className="inline-block h-3 w-3 rounded-sm" style={cellStyle("busy", true)} /> just this date</span>
+        <span className="flex items-center gap-1"><i className="inline-block h-3 w-3 rounded-sm" style={cellStyle("free", false)} /> free</span>
+      </div>
     </div>
   );
 }

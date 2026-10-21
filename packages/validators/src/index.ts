@@ -59,6 +59,7 @@ export const weeklyBlockInput = z
     dayOfWeek: z.number().int().min(0).max(6),
     startMinute: minuteOfDay,
     endMinute: minuteOfDay,
+    label: z.string().trim().max(80).optional(),
   })
   .refine((b) => b.endMinute > b.startMinute, { message: "End must be after start" });
 

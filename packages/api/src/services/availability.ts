@@ -25,13 +25,13 @@ export async function myBlocks(db: Db, userId: string) {
 }
 
 /** Replace the user's recurring busy (or free) pattern. */
-export async function setWeeklyPattern(db: Db, userId: string, input: { kind: AvailabilityKind; blocks: WeeklyBlock[] }) {
+export async function setWeeklyPattern(db: Db, userId: string, input: { kind: AvailabilityKind; blocks: (WeeklyBlock & { label?: string })[] }) {
   await db.transaction(async (tx) => {
     await tx
       .delete(availabilityBlocks)
       .where(and(eq(availabilityBlocks.userId, userId), eq(availabilityBlocks.kind, input.kind), isNotNull(availabilityBlocks.dayOfWeek)));
     if (input.blocks.length)
-      await tx.insert(availabilityBlocks).values(input.blocks.map((b) => ({ ...b, userId, kind: input.kind })));
+      await tx.insert(availabilityBlocks).values(input.blocks.map((b) => ({ ...b, label: b.label || null, userId, kind: input.kind })));
   });
   return { ok: true as const };
 }

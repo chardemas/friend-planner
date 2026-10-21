@@ -14,7 +14,7 @@ export default function CrewsPage() {
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {crews.data?.map((c) => (
-          <Link key={c.id} href={`/crews/${c.id}`} className="card flex items-center gap-3 p-4 hover:border-ink/20">
+          <Link key={c.id} href={`/crews/${c.id}`} className="card flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:border-brand/25">
             <span className="text-3xl">{c.emoji}</span>
             <div>
               <div className="font-semibold">{c.name}</div>

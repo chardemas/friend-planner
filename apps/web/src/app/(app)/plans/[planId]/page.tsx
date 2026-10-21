@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { orpc } from "@/lib/orpc";
 import { dayLabel, kindEmoji, money, timeRange } from "@/lib/format";
-import { downloadIcs } from "@/lib/ics";
+import { AddToCalendar } from "@/components/add-to-calendar";
 import { Avatar } from "@/components/avatar";
 import { RsvpButtons } from "@/components/rsvp-buttons";
 import { ExpenseForm } from "@/components/money";
@@ -69,7 +69,7 @@ export default function PlanPage() {
               <button
                 key={o.start.toISOString()}
                 onClick={() => setOccIndex(i)}
-                className={`shrink-0 rounded-xl border px-3 py-2 text-left text-sm ${i === occIndex ? "border-ink bg-card" : "border-line bg-card/50 text-muted"}`}
+                className={`shrink-0 rounded-xl border px-3 py-2 text-left text-sm ${i === occIndex ? "border-brand bg-brand-soft" : "border-line bg-card/50 text-muted"}`}
               >
                 <div className="font-medium">{o.start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
                 <div className="text-xs">{o.counts.going} in</div>
@@ -114,23 +114,18 @@ export default function PlanPage() {
 
       <aside className="space-y-4">
         <div className="card space-y-2 p-4">
-          <button
-            className="btn-ghost w-full"
-            onClick={() =>
-              downloadIcs({
-                id: p.id,
-                title: p.title,
-                description: p.description,
-                location: p.location,
-                start: p.repeatsWeekly ? p.startsAt : occ.start,
-                end: p.repeatsWeekly ? p.endsAt : occ.end,
-                weekly: p.repeatsWeekly,
-                until: p.repeatUntil,
-              })
-            }
-          >
-            📅 Add to my calendar
-          </button>
+          <AddToCalendar
+            event={{
+              id: p.id,
+              title: p.title,
+              description: p.description,
+              location: p.location,
+              start: p.repeatsWeekly ? p.startsAt : occ.start,
+              end: p.repeatsWeekly ? p.endsAt : occ.end,
+              weekly: p.repeatsWeekly,
+              until: p.repeatUntil,
+            }}
+          />
           {p.isOrganizer && !p.cancelledAt && (
             <button
               className="w-full text-sm text-muted hover:text-nope"

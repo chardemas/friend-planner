@@ -5,8 +5,8 @@ export function AuthShell({ title, blurb, children }: { title: string; blurb?: R
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-4 py-10">
       <div className="mb-8">
-        <Link href="/" className="mb-3 block text-4xl">🫶</Link>
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+        <Link href="/" className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-soft to-violet-soft text-4xl shadow-(--shadow-soft)">🫶</Link>
+        <h1 className="text-gradient text-4xl font-bold tracking-tight">{title}</h1>
         {blurb && <p className="mt-2 text-muted">{blurb}</p>}
       </div>
       {children}

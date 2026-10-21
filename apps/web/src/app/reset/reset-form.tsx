@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { resetPasswordAction, type FormState } from "../actions";
+import { PasswordInput } from "@/components/password-input";
 
 export function ResetForm({ token }: { token: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(resetPasswordAction, {});
@@ -11,17 +12,15 @@ export function ResetForm({ token }: { token: string }) {
       <input type="hidden" name="token" value={token} />
       <div>
         <label className="label" htmlFor="password">New password</label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           required
           minLength={10}
           maxLength={128}
           autoComplete="new-password"
           autoFocus
           placeholder="At least 10 characters"
-          className="input"
         />
       </div>
       {state.error && (

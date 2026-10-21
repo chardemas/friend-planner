@@ -41,7 +41,7 @@ export default function NewCrewPage() {
               type="button"
               key={e}
               onClick={() => setEmoji(e)}
-              className={`aspect-square rounded-lg text-xl transition ${emoji === e ? "bg-brand-soft ring-2 ring-brand" : "bg-card hover:bg-line/50"}`}
+              className={`aspect-square rounded-xl text-xl transition ${emoji === e ? "bg-brand-soft ring-2 ring-brand" : "bg-card hover:bg-brand-soft"}`}
             >
               {e}
             </button>

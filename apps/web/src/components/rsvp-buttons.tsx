@@ -50,7 +50,7 @@ export function RsvpButtons({
               mutation.mutate({ planId, occurrenceStart, status: o.status, scope: everyWeek ? "series" : "occurrence" });
             }}
             className={`rounded-full border px-3 ${compact ? "py-1 text-xs" : "py-1.5 text-sm"} font-medium transition ${
-              optimistic === o.status ? o.on : "border-line bg-card text-ink hover:bg-paper"
+              optimistic === o.status ? o.on : "border-line bg-card text-ink hover:border-brand/30 hover:bg-brand-soft"
             }`}
           >
             {o.label}

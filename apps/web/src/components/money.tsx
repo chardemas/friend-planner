@@ -96,13 +96,13 @@ export function ExpenseForm({
           ))}
         </select>
         <span className="text-muted">split</span>
-        <div className="flex rounded-lg border border-line p-0.5">
+        <div className="flex rounded-full border border-line bg-paper p-0.5">
           {(["equal", "exact"] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMethod(m)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium ${method === m ? "bg-ink text-white" : "text-muted"}`}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${method === m ? "bg-gradient-to-r from-brand to-violet text-white" : "text-muted"}`}
             >
               {m === "equal" ? "evenly" : "by amount"}
             </button>

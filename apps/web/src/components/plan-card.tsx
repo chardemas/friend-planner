@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AddToCalendar } from "./add-to-calendar";
 import { AvatarStack } from "./avatar";
 import { RsvpButtons } from "./rsvp-buttons";
 import { kindEmoji, timeRange } from "@/lib/format";
@@ -27,14 +28,14 @@ export function PlanCard({ o, showCrew = true }: { o: OccurrenceView; showCrew?:
   const past = o.end.getTime() < Date.now();
   return (
     <div
-      className={`card flex flex-col gap-3 p-4 transition hover:border-ink/20 hover:shadow-sm sm:flex-row sm:items-center ${past ? "opacity-60" : ""}`}
+      className={`card flex flex-col gap-3 p-4 transition hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-[0_10px_28px_-10px_rgb(224_64_154/0.35)] sm:flex-row sm:items-center ${past ? "opacity-60" : ""}`}
     >
       <Link href={`/plans/${o.planId}`} className="flex min-w-0 flex-1 items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-paper text-xl">{kindEmoji[o.kind] ?? "✨"}</div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-soft to-violet-soft text-xl">{kindEmoji[o.kind] ?? "✨"}</div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <h3 className="truncate font-semibold">{o.title}</h3>
-            {o.repeatsWeekly && <span className="chip bg-brand-soft text-brand">weekly</span>}
+            {o.repeatsWeekly && <span className="chip bg-violet-soft text-violet">weekly</span>}
           </div>
           <p className="text-sm text-muted">
             {timeRange(o.start, o.end)}
@@ -51,8 +52,9 @@ export function PlanCard({ o, showCrew = true }: { o: OccurrenceView; showCrew?:
         </div>
       </Link>
       {!past && (
-        <div className="sm:shrink-0">
+        <div className="flex items-center gap-2 sm:shrink-0">
           <RsvpButtons planId={o.planId} occurrenceStart={o.start} status={o.myStatus} repeatsWeekly={o.repeatsWeekly} compact />
+          <AddToCalendar compact event={{ id: o.planId, title: o.title, location: o.location, start: o.start, end: o.end }} />
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { users, type DbOrTx } from "@lowkey/db";
 import { isValidTimeZone } from "../lib/time";
 import { badRequest, notFound } from "../orpc";
 
-const COLORS = ["#7c5cff", "#ff6b6b", "#1fb58f", "#f59f00", "#3b82f6", "#e64980", "#0ea5e9", "#a3632b"];
+const COLORS = ["#8b5cf6", "#ec4899", "#f472b6", "#a855f7", "#fb7185", "#14b8a6", "#f59e0b", "#6366f1"];
 
 export async function getTimezone(db: DbOrTx, userId: string) {
   const u = await db.query.users.findFirst({ where: eq(users.id, userId), columns: { timezone: true } });

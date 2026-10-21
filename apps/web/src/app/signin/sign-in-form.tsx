@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signInAction, type SignInState } from "../actions";
+import { PasswordInput } from "@/components/password-input";
 
 export function SignInForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState<SignInState, FormData>(signInAction, { mode: "signin" });
@@ -39,16 +40,14 @@ export function SignInForm({ next }: { next?: string }) {
             <Link href="/forgot" className="text-xs text-muted underline underline-offset-4 hover:text-ink">Forgot?</Link>
           )}
         </div>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           required
           minLength={10}
           maxLength={128}
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
           placeholder={mode === "signup" ? "At least 10 characters" : "Your password"}
-          className="input"
         />
       </div>
       {state.mode === mode && state.error && <p className="text-sm text-nope">{state.error}</p>}

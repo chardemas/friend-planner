@@ -27,7 +27,7 @@ export default function HomePage() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[1fr_300px]">
       <section>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-3xl font-bold tracking-tight">
           Hey{me.data ? `, ${me.data.name}` : ""} 👋
         </h1>
         <p className="mt-1 text-muted">
@@ -70,12 +70,12 @@ export default function HomePage() {
         <div className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold">Your crews</h2>
-            <Link href="/crews/new" className="text-sm text-brand">+ New</Link>
+            <Link href="/crews/new" className="text-sm font-semibold text-brand">+ New</Link>
           </div>
           <ul className="space-y-1">
             {crews.data?.map((c) => (
               <li key={c.id}>
-                <Link href={`/crews/${c.id}`} className="-mx-2 flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-paper">
+                <Link href={`/crews/${c.id}`} className="-mx-2 flex items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-brand-soft">
                   <span className="text-lg">{c.emoji}</span>
                   <span className="flex-1 truncate text-sm font-medium">{c.name}</span>
                   <span className="text-xs text-muted">{c.memberCount}</span>
@@ -106,7 +106,7 @@ export default function HomePage() {
           )}
         </div>
 
-        <Link href="/availability" className="card block p-4 transition hover:border-ink/20">
+        <Link href="/availability" className="card block bg-gradient-to-br from-violet-soft to-brand-soft p-4 transition hover:-translate-y-0.5 hover:border-brand/25">
           <h2 className="font-semibold">🗓️ Keep your week up to date</h2>
           <p className="mt-1 text-sm text-muted">Paint when you&apos;re usually busy so friends can pick times that work.</p>
         </Link>

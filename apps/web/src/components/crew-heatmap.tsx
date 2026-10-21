@@ -42,9 +42,9 @@ export function CrewHeatmap({ crewId }: { crewId: string }) {
   const shade = (count: number) => {
     if (!total) return "transparent";
     const r = count / total;
-    if (r === 1) return "var(--color-go)";
-    if (r === 0) return "#f1ece4";
-    return `color-mix(in oklab, var(--color-go) ${Math.round(15 + r * 60)}%, #f7f3ec)`;
+    if (r === 1) return "var(--color-violet)";
+    if (r === 0) return "var(--color-paper)";
+    return `color-mix(in oklab, var(--color-violet) ${Math.round(15 + r * 60)}%, var(--color-violet-soft))`;
   };
 
   return (
@@ -83,7 +83,7 @@ export function CrewHeatmap({ crewId }: { crewId: string }) {
                       key={di}
                       onClick={() => setSelected(idx)}
                       title={`${time(s.start)}: ${s.availableCount}/${total} free`}
-                      className={`h-4 border-l border-white/70 ${r % 2 === 0 ? "border-t border-t-white/80" : ""} ${selected === idx ? "outline-2 outline-ink -outline-offset-1" : ""}`}
+                      className={`h-4 border-l border-white/70 ${r % 2 === 0 ? "border-t border-t-white/80" : ""} ${selected === idx ? "outline-2 outline-brand -outline-offset-1" : ""}`}
                       style={{ background: shade(s.availableCount), opacity: past ? 0.35 : 1 }}
                     />
                   );
